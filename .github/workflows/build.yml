@@ -20,8 +20,6 @@ jobs:
           ls -la
           echo "=== aether_game/ ==="
           ls -la aether_game/
-          echo "=== export_presets.cfg ==="
-          find . -name "export_presets.cfg" -type f
 
       - name: Setup Godot
         uses: firebelley/godot-export@v5.0.0
@@ -30,11 +28,28 @@ jobs:
           godot_export_templates_download_url: https://github.com/godotengine/godot/releases/download/4.2.1-stable/Godot_v4.2.1-stable_export_templates.tpz
           relative_project_path: ./aether_game
           archive_output: true
+          use_preset_export_path: true
+
+      - name: Debug - Cek Hasil Build
+        run: |
+          echo "=== Cek aether_game/builds/ ==="
+          ls -la aether_game/builds/ || echo "Tidak ada"
+          echo "=== Cek ~/.local/share/godot/builds/ ==="
+          ls -la ~/.local/share/godot/builds/ || echo "Tidak ada"
+          echo "=== Cek ~/.local/share/godot/archives/ ==="
+          ls -la ~/.local/share/godot/archives/ || echo "Tidak ada"
+          echo "=== Cari semua file .zip ==="
+          find ~ -name "*.zip" -type f 2>/dev/null
+          echo "=== Cari semua file .x86_64 ==="
+          find ~ -name "*.x86_64" -type f 2>/dev/null
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: game-builds
-          path: ./aether_game/builds/
+          path: |
+            aether_game/builds/
+            ~/.local/share/godot/builds/
+            ~/.local/share/godot/archives/
           retention-days: 30
           if-no-files-found: warn

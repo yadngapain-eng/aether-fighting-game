@@ -1,4 +1,4 @@
-name: Build Godot Game (Linux, Web, Android)
+name: Build Godot Game
 
 on:
   push:
@@ -14,15 +14,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # ========== JAVA ==========
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # ==========================================
-      # SETUP ANDROID SDK
-      # ==========================================
+      # ========== ANDROID SDK ==========
       - name: Setup Android SDK
         run: |
           export ANDROID_HOME=$HOME/android-sdk
@@ -35,22 +34,24 @@ jobs:
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9519653"
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9519653" > /dev/null 2>&1
 
-      # ==========================================
-      # GENERATE DEBUG KEYSTORE (UNTUK SIGNING APK)
-      # ==========================================
+      - name: Verify Android SDK
+        run: |
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          ls $ANDROID_HOME/
+          ls $ANDROID_HOME/ndk/
+          which sdkmanager
+
+      # ========== KEYSTORE ==========
       - name: Generate Debug Keystore
         run: |
           mkdir -p ~/.android
           keytool -genkey -v -keystore ~/.android/debug.keystore             -storepass android -alias androiddebugkey -keypass android             -keyalg RSA -keysize 2048 -validity 10000             -dname "CN=Android Debug,O=Android,C=US"
-          echo "✅ Debug keystore dibuat"
           ls -la ~/.android/
 
-      # ==========================================
-      # SETUP GODOT (DOWNLOAD DLL)
-      # ==========================================
+      # ========== DOWNLOAD GODOT ==========
       - name: Download Godot
         run: |
           mkdir -p ~/godot
@@ -61,7 +62,7 @@ jobs:
           chmod +x godot
           echo "$HOME/godot" >> $GITHUB_PATH
 
-      - name: Download Godot Export Templates
+      - name: Download Export Templates
         run: |
           mkdir -p ~/.local/share/godot/export_templates/4.2.1.stable
           cd /tmp
@@ -71,53 +72,51 @@ jobs:
           unzip -q /tmp/Godot_v4.2.1-stable_export_templates.tpz
           cp -r templates/* ~/.local/share/godot/export_templates/4.2.1.stable/
           ls -la ~/.local/share/godot/export_templates/4.2.1.stable/
-          # Verify version.txt
-          cat ~/.local/share/godot/export_templates/4.2.1.stable/version.txt || echo "No version.txt"
 
-      # ==========================================
-      # INSTALL ANDROID BUILD TEMPLATE KE PROJECT
-      # ==========================================
-      - name: Install Android Build Template
-        run: |
-          cd aether_game
-          
-          # Extract android_source.zip ke folder android/ di project
-          mkdir -p android
-          cd android
-          unzip -o -q ~/.local/share/godot/export_templates/4.2.1.stable/android_source.zip
-          cd ..
-          
-          echo "✅ Android build template extracted"
-          ls -la android/
-          
-          # Buat file .gdignore di folder android (opsional)
-          touch android/.gdignore
-
-      # ==========================================
-      # IMPORT PROJECT & EXPORT
-      # ==========================================
-      - name: Import Project (First Time)
+      # ========== IMPORT PROJECT ==========
+      - name: Import Project
         run: |
           cd aether_game
           ~/godot/godot --headless --import --quit 2>&1 || true
           echo "✅ Project imported"
 
+      # ========== EXPORT LINUX & WEB ==========
       - name: Export Linux
         run: |
           cd aether_game
           mkdir -p builds/linux
-          ~/godot/godot --headless --export-release "Linux/X11" builds/linux/AetherFighting.x86_64 2>&1 || true
-          echo "=== Linux build ==="
-          ls -la builds/linux/ || echo "Tidak ada"
+          ~/godot/godot --headless --export-release "Linux/X11" builds/linux/AetherFighting.x86_64 2>&1
+          ls -la builds/linux/
 
       - name: Export Web
         run: |
           cd aether_game
           mkdir -p builds/web
-          ~/godot/godot --headless --export-release "Web" builds/web/index.html 2>&1 || true
-          echo "=== Web build ==="
-          ls -la builds/web/ || echo "Tidak ada"
+          ~/godot/godot --headless --export-release "Web" builds/web/index.html 2>&1
+          ls -la builds/web/
 
+      # ========== ANDROID BUILD TEMPLATE ==========
+      - name: Install Android Build Template
+        run: |
+          cd aether_game
+          
+          # Extract android_source.zip ke folder android/
+          mkdir -p android
+          cd android
+          unzip -o -q ~/.local/share/godot/export_templates/4.2.1.stable/android_source.zip
+          cd ..
+          
+          echo "=== Isi folder android/ ==="
+          ls -la android/
+          
+          # Cek build.gradle harus ada
+          if [ ! -f android/build.gradle ]; then
+            echo "❌ build.gradle tidak ditemukan!"
+            exit 1
+          fi
+          echo "✅ Android build template OK"
+
+      # ========== EXPORT ANDROID (TANPA || true) ==========
       - name: Export Android APK
         env:
           ANDROID_HOME: /home/runner/android-sdk
@@ -125,48 +124,44 @@ jobs:
         run: |
           cd aether_game
           mkdir -p builds/android
-          echo "=== DEBUG: Cek keystore ==="
-          ls -la ~/.android/debug.keystore || echo "❌ Keystore tidak ada!"
           
-          echo "=== DEBUG: Cek android template ==="
-          ls -la android/ | head -20
+          echo "=== Debug info ==="
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          ls -la ~/.android/debug.keystore
+          ls android/ | head -5
           
-          echo "=== Menjalankan export Android ==="
-          ~/godot/godot --headless --verbose --export-debug "Android" builds/android/AetherFighting.apk 2>&1 || true
+          echo "=== Exporting Android ==="
+          ~/godot/godot --headless --verbose --export-debug "Android" builds/android/AetherFighting.apk
           
           echo "=== Hasil ==="
           ls -la builds/android/
-          find . -name "*.apk" -type f
+          
+          # Verifikasi APK ada dan > 1 MB
+          APK_SIZE=$(stat -c%s builds/android/AetherFighting.apk 2>/dev/null || echo 0)
+          echo "APK size: $APK_SIZE bytes"
+          
+          if [ "$APK_SIZE" -lt 1000000 ]; then
+            echo "❌ APK terlalu kecil atau tidak ada!"
+            exit 1
+          fi
+          echo "✅ APK berhasil dibuat"
 
-      - name: Debug - Cek Hasil Build
-        run: |
-          echo "=== aether_game/builds/ ==="
-          find aether_game/builds/ -type f 2>/dev/null || echo "Tidak ada"
-          echo "=== Cari APK ==="
-          find . -name "*.apk" -type f 2>/dev/null
-
-      # ==========================================
-      # UPLOAD ARTIFACTS
-      # ==========================================
-      - name: Upload Linux Build
+      # ========== UPLOAD ==========
+      - name: Upload Linux
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
           path: aether_game/builds/linux/
-          if-no-files-found: warn
 
-      - name: Upload Web Build
+      - name: Upload Web
         uses: actions/upload-artifact@v4
         with:
           name: web-build
           path: aether_game/builds/web/
-          if-no-files-found: warn
 
-      - name: Upload Android APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: |
-            aether_game/builds/android/*.apk
-            aether_game/builds/android/
-          if-no-files-found: warn
+          path: aether_game/builds/android/*.apk
+          if-no-files-found: error

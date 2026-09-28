@@ -8,8 +8,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    name: Build Game
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Setup Godot
         uses: firebelley/godot-export@v5.0.0
         with:
@@ -17,8 +21,11 @@ jobs:
           godot_export_templates_download_url: https://github.com/godotengine/godot/releases/download/4.2.1-stable/Godot_v4.2.1-stable_export_templates.tpz
           relative_project_path: ./aether_game
           archive_output: true
-      - name: Upload Artifact
+          cache: true
+
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: game-builds
           path: ./aether_game/builds/
+          retention-days: 30

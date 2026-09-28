@@ -1,6 +1,5 @@
 # Godot 4+
 .godot/
-/android/
 .import/
 export.cfg
 *.translation
@@ -14,7 +13,10 @@ builds/
 *.apk
 *.aab
 
-# Android
+# Android build template (di-generate saat build)
+aether_game/android/
+
+# Android SDK
 .gradle/
 local.properties
 *.keystore

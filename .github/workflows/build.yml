@@ -14,6 +14,15 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Debug - List Files
+        run: |
+          echo "=== Root ==="
+          ls -la
+          echo "=== aether_game ==="
+          ls -la aether_game/ || echo "Tidak ada folder aether_game"
+          echo "=== export_presets.cfg ==="
+          find . -name "export_presets.cfg" -type f
+
       - name: Setup Godot
         uses: firebelley/godot-export@v5.0.0
         with:
@@ -21,7 +30,6 @@ jobs:
           godot_export_templates_download_url: https://github.com/godotengine/godot/releases/download/4.2.1-stable/Godot_v4.2.1-stable_export_templates.tpz
           relative_project_path: ./aether_game
           archive_output: true
-          cache: true
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
@@ -29,3 +37,4 @@ jobs:
           name: game-builds
           path: ./aether_game/builds/
           retention-days: 30
+          if-no-files-found: warn

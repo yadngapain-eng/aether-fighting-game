@@ -18,8 +18,8 @@ jobs:
         run: |
           echo "=== Root ==="
           ls -la
-          echo "=== aether_game ==="
-          ls -la aether_game/ || echo "Tidak ada folder aether_game"
+          echo "=== aether_game/ ==="
+          ls -la aether_game/
           echo "=== export_presets.cfg ==="
           find . -name "export_presets.cfg" -type f
 

@@ -1,0 +1,24 @@
+name: Build Godot Game
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Godot
+        uses: firebelley/godot-export@v5.0.0
+        with:
+          godot_executable_download_url: https://github.com/godotengine/godot/releases/download/4.2.1-stable/Godot_v4.2.1-stable_linux.x86_64.zip
+          godot_export_templates_download_url: https://github.com/godotengine/godot/releases/download/4.2.1-stable/Godot_v4.2.1-stable_export_templates.tpz
+          relative_project_path: ./aether_game
+          archive_output: true
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-builds
+          path: ./aether_game/builds/
